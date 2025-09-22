@@ -8,6 +8,9 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import Icon from '@/components/ui/icon';
 
 const Index = () => {
@@ -16,6 +19,25 @@ const Index = () => {
   const [commentTexts, setCommentTexts] = useState<{[key: number]: string}>({});
   const [showComments, setShowComments] = useState<{[key: number]: boolean}>({});
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userName, setUserName] = useState('Ваш профиль');
+  const [isVerified, setIsVerified] = useState(true);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editUserName, setEditUserName] = useState(userName);
+  const [adminSection, setAdminSection] = useState('dashboard');
+  const [adminMessage, setAdminMessage] = useState('');
+
+  const [users, setUsers] = useState([
+    { id: 1, name: 'Алексей Петров', email: 'alex@example.com', verified: false, status: 'active', posts: 23 },
+    { id: 2, name: 'Мария Иванова', email: 'maria@example.com', verified: true, status: 'active', posts: 45 },
+    { id: 3, name: 'Дмитрий Смирнов', email: 'dmitry@example.com', verified: false, status: 'banned', posts: 12 },
+    { id: 4, name: 'Анна Козлова', email: 'anna@example.com', verified: true, status: 'active', posts: 67 },
+  ]);
+
+  const [reports, setReports] = useState([
+    { id: 1, type: 'Спам', content: 'Пост содержит рекламу', reporter: 'Пользователь123', status: 'pending' },
+    { id: 2, type: 'Оскорбления', content: 'Неподобающие комментарии', reporter: 'Модератор1', status: 'resolved' },
+    { id: 3, type: 'Фейк', content: 'Ложная информация', reporter: 'Пользователь456', status: 'pending' },
+  ]);
 
   const initialPosts = [
     {
@@ -101,7 +123,7 @@ const Index = () => {
     if (newPostText.trim()) {
       const newPost = {
         id: Date.now(),
-        author: 'Вы',
+        author: userName,
         avatar: '/img/24c84469-a371-42dd-98a2-9a3aaaafd967.jpg',
         time: 'только что',
         content: newPostText,
@@ -115,14 +137,14 @@ const Index = () => {
       setPostsState(prevPosts => [newPost, ...prevPosts]);
       setNewPostText('');
     }
-  }, [newPostText]);
+  }, [newPostText, userName]);
 
   const handleAddComment = useCallback((postId: number) => {
     const commentText = commentTexts[postId];
     if (commentText?.trim()) {
       const newComment = {
         id: Date.now(),
-        author: 'Вы',
+        author: userName,
         text: commentText,
         time: 'только что',
         avatar: '/img/24c84469-a371-42dd-98a2-9a3aaaafd967.jpg'
@@ -142,7 +164,7 @@ const Index = () => {
       
       setCommentTexts(prev => ({ ...prev, [postId]: '' }));
     }
-  }, [commentTexts]);
+  }, [commentTexts, userName]);
 
   const toggleComments = useCallback((postId: number) => {
     setShowComments(prev => ({ ...prev, [postId]: !prev[postId] }));
@@ -151,8 +173,329 @@ const Index = () => {
   const handleDeletePost = useCallback((postId: number) => {
     if (isAdmin) {
       setPostsState(prevPosts => prevPosts.filter(post => post.id !== postId));
+      setAdminMessage('Пост успешно удален');
+      setTimeout(() => setAdminMessage(''), 3000);
     }
   }, [isAdmin]);
+
+  const handleSaveProfile = useCallback(() => {
+    setUserName(editUserName);
+    setIsEditingProfile(false);
+    setAdminMessage('Профиль успешно обновлен');
+    setTimeout(() => setAdminMessage(''), 3000);
+  }, [editUserName]);
+
+  const handleVerifyUser = useCallback((userId: number) => {
+    if (isAdmin) {
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === userId 
+            ? { ...user, verified: !user.verified }
+            : user
+        )
+      );
+      setAdminMessage('Статус верификации изменен');
+      setTimeout(() => setAdminMessage(''), 3000);
+    }
+  }, [isAdmin]);
+
+  const handleBanUser = useCallback((userId: number) => {
+    if (isAdmin) {
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === userId 
+            ? { ...user, status: user.status === 'banned' ? 'active' : 'banned' }
+            : user
+        )
+      );
+      setAdminMessage('Статус пользователя изменен');
+      setTimeout(() => setAdminMessage(''), 3000);
+    }
+  }, [isAdmin]);
+
+  const handleResolveReport = useCallback((reportId: number) => {
+    if (isAdmin) {
+      setReports(prevReports => 
+        prevReports.map(report => 
+          report.id === reportId 
+            ? { ...report, status: report.status === 'resolved' ? 'pending' : 'resolved' }
+            : report
+        )
+      );
+      setAdminMessage('Статус жалобы изменен');
+      setTimeout(() => setAdminMessage(''), 3000);
+    }
+  }, [isAdmin]);
+
+  const renderAdminContent = () => {
+    switch (adminSection) {
+      case 'users':
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Управление пользователями</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Пользователь</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Посты</TableHead>
+                  <TableHead>Статус</TableHead>
+                  <TableHead>Верификация</TableHead>
+                  <TableHead>Действия</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="flex items-center space-x-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.id % 2 === 0 ? '/img/24c84469-a371-42dd-98a2-9a3aaaafd967.jpg' : '/img/b744abf9-6cbf-4760-8752-af94bcfd7930.jpg'} />
+                        <AvatarFallback>{user.name[0]}</AvatarFallback>
+                      </Avatar>
+                      <span>{user.name}</span>
+                      {user.verified && <Icon name="CheckCircle" size={16} className="text-blue-500" />}
+                    </TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>{user.posts}</TableCell>
+                    <TableCell>
+                      <Badge variant={user.status === 'active' ? 'default' : 'destructive'}>
+                        {user.status === 'active' ? 'Активен' : 'Заблокирован'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={user.verified ? 'default' : 'secondary'}>
+                        {user.verified ? 'Верифицирован' : 'Не верифицирован'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleVerifyUser(user.id)}
+                        >
+                          {user.verified ? 'Убрать верификацию' : 'Верифицировать'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={user.status === 'banned' ? 'default' : 'destructive'}
+                          onClick={() => handleBanUser(user.id)}
+                        >
+                          {user.status === 'banned' ? 'Разблокировать' : 'Заблокировать'}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        );
+      case 'posts':
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Модерация постов</h3>
+            <div className="space-y-4">
+              {postsState.map((post) => (
+                <Card key={post.id} className="border-l-4 border-l-orange-500">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={post.avatar} />
+                          <AvatarFallback>{post.author[0]}</AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium">{post.author}</span>
+                        <span className="text-sm text-slate-500">{post.time}</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDeletePost(post.id)}
+                      >
+                        <Icon name="Trash2" size={16} className="mr-1" />
+                        Удалить
+                      </Button>
+                    </div>
+                    <p className="text-sm">{post.content}</p>
+                    <div className="flex items-center space-x-4 mt-2 text-sm text-slate-500">
+                      <span>👍 {post.likes}</span>
+                      <span>💬 {post.comments}</span>
+                      <span>🔄 {post.shares}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        );
+      case 'reports':
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Жалобы и нарушения</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Тип</TableHead>
+                  <TableHead>Описание</TableHead>
+                  <TableHead>Отправитель</TableHead>
+                  <TableHead>Статус</TableHead>
+                  <TableHead>Действия</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reports.map((report) => (
+                  <TableRow key={report.id}>
+                    <TableCell>
+                      <Badge variant="outline">{report.type}</Badge>
+                    </TableCell>
+                    <TableCell>{report.content}</TableCell>
+                    <TableCell>{report.reporter}</TableCell>
+                    <TableCell>
+                      <Badge variant={report.status === 'resolved' ? 'default' : 'destructive'}>
+                        {report.status === 'resolved' ? 'Решено' : 'В ожидании'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleResolveReport(report.id)}
+                      >
+                        {report.status === 'resolved' ? 'Переоткрыть' : 'Решить'}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        );
+      case 'analytics':
+        return (
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold">Аналитика и отчеты</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <h4 className="font-medium">Активность пользователей</h4>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span>Сегодня</span>
+                      <span className="font-medium">324 пользователя</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>На этой неделе</span>
+                      <span className="font-medium">1,247 пользователей</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>В этом месяце</span>
+                      <span className="font-medium">4,892 пользователя</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <h4 className="font-medium">Контент</h4>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span>Новые посты</span>
+                      <span className="font-medium">89 сегодня</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Комментарии</span>
+                      <span className="font-medium">256 сегодня</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Лайки</span>
+                      <span className="font-medium">1,423 сегодня</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        );
+      default:
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-blue-50 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-blue-600">1,247</div>
+                <div className="text-sm text-slate-600">Пользователей</div>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-green-600">3,891</div>
+                <div className="text-sm text-slate-600">Постов</div>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-purple-600">12,456</div>
+                <div className="text-sm text-slate-600">Лайков</div>
+              </div>
+              <div className="bg-orange-50 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-orange-600">789</div>
+                <div className="text-sm text-slate-600">Сообщений</div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg">Управление контентом</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <Button 
+                  variant="outline" 
+                  className="h-16 justify-start"
+                  onClick={() => setAdminSection('users')}
+                >
+                  <Icon name="Users" className="mr-2" size={20} />
+                  <div className="text-left">
+                    <div className="font-medium">Управление пользователями</div>
+                    <div className="text-sm text-slate-500">Верификация и блокировка</div>
+                  </div>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-16 justify-start"
+                  onClick={() => setAdminSection('posts')}
+                >
+                  <Icon name="FileText" className="mr-2" size={20} />
+                  <div className="text-left">
+                    <div className="font-medium">Модерация постов</div>
+                    <div className="text-sm text-slate-500">Удаление и контроль</div>
+                  </div>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-16 justify-start"
+                  onClick={() => setAdminSection('reports')}
+                >
+                  <Icon name="AlertTriangle" className="mr-2" size={20} />
+                  <div className="text-left">
+                    <div className="font-medium">Жалобы и нарушения</div>
+                    <div className="text-sm text-slate-500">Рассмотрение жалоб</div>
+                  </div>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-16 justify-start"
+                  onClick={() => setAdminSection('analytics')}
+                >
+                  <Icon name="BarChart" className="mr-2" size={20} />
+                  <div className="text-left">
+                    <div className="font-medium">Аналитика и отчеты</div>
+                    <div className="text-sm text-slate-500">Статистика платформы</div>
+                  </div>
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+    }
+  };
 
   const renderSectionContent = () => {
     switch (selectedSection) {
@@ -160,9 +503,21 @@ const Index = () => {
         return (
           <Card className="bg-white/70 backdrop-blur-sm border-slate-200">
             <CardHeader>
-              <div className="flex items-center space-x-2">
-                <Icon name="Shield" className="text-red-500" size={24} />
-                <h2 className="text-xl font-semibold">Админ панель</h2>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Icon name="Shield" className="text-red-500" size={24} />
+                  <h2 className="text-xl font-semibold">Админ панель</h2>
+                </div>
+                {adminSection !== 'dashboard' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setAdminSection('dashboard')}
+                  >
+                    <Icon name="ArrowLeft" size={16} className="mr-1" />
+                    Назад
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -175,53 +530,20 @@ const Index = () => {
                 <Label htmlFor="admin-mode">Включить режим администратора</Label>
               </div>
               
+              {adminMessage && (
+                <Alert>
+                  <Icon name="CheckCircle" size={16} />
+                  <AlertDescription>{adminMessage}</AlertDescription>
+                </Alert>
+              )}
+              
               <Separator />
               
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Статистика платформы</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-blue-50 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-blue-600">1,247</div>
-                    <div className="text-sm text-slate-600">Пользователей</div>
-                  </div>
-                  <div className="bg-green-50 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-green-600">3,891</div>
-                    <div className="text-sm text-slate-600">Постов</div>
-                  </div>
-                  <div className="bg-purple-50 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-purple-600">12,456</div>
-                    <div className="text-sm text-slate-600">Лайков</div>
-                  </div>
-                  <div className="bg-orange-50 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-orange-600">789</div>
-                    <div className="text-sm text-slate-600">Сообщений</div>
-                  </div>
+              {isAdmin ? renderAdminContent() : (
+                <div className="text-center py-8 text-slate-500">
+                  Включите режим администратора для доступа к функциям управления
                 </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Управление контентом</h3>
-                <div className="space-y-2">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Icon name="Users" className="mr-2" size={16} />
-                    Управление пользователями
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Icon name="FileText" className="mr-2" size={16} />
-                    Модерация постов
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Icon name="AlertTriangle" className="mr-2" size={16} />
-                    Жалобы и нарушения
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Icon name="BarChart" className="mr-2" size={16} />
-                    Аналитика и отчеты
-                  </Button>
-                </div>
-              </div>
+              )}
 
               {isAdmin && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -246,15 +568,96 @@ const Index = () => {
                 <AvatarFallback>Я</AvatarFallback>
               </Avatar>
               <div className="flex items-center justify-center space-x-2 mb-2">
-                <h2 className="text-xl font-semibold">Ваш профиль</h2>
-                <div className="flex items-center justify-center w-6 h-6 bg-blue-500 rounded-full">
-                  <Icon name="Check" size={16} className="text-white" />
-                </div>
+                {isEditingProfile ? (
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      value={editUserName}
+                      onChange={(e) => setEditUserName(e.target.value)}
+                      className="w-48 text-center"
+                    />
+                    <Button size="sm" onClick={handleSaveProfile}>
+                      <Icon name="Check" size={16} />
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditingProfile(false);
+                        setEditUserName(userName);
+                      }}
+                    >
+                      <Icon name="X" size={16} />
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="text-xl font-semibold">{userName}</h2>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setIsEditingProfile(true);
+                        setEditUserName(userName);
+                      }}
+                    >
+                      <Icon name="Edit2" size={16} />
+                    </Button>
+                  </>
+                )}
+                {isVerified && (
+                  <div className="flex items-center justify-center w-6 h-6 bg-blue-500 rounded-full">
+                    <Icon name="Check" size={16} className="text-white" />
+                  </div>
+                )}
               </div>
-              <Badge variant="secondary" className="bg-blue-100 text-blue-700 mb-4">
-                <Icon name="ShieldCheck" size={12} className="mr-1" />
-                Верифицированный аккаунт
-              </Badge>
+              {isVerified && (
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700 mb-4">
+                  <Icon name="ShieldCheck" size={12} className="mr-1" />
+                  Верифицированный аккаунт
+                </Badge>
+              )}
+              
+              <div className="mb-4">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Icon name="Award" size={16} className="mr-2" />
+                      Запросить верификацию
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Заявка на верификацию</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <p className="text-sm text-slate-600">
+                        Верификация подтверждает подлинность вашего аккаунта и дает дополнительные возможности.
+                      </p>
+                      <div className="space-y-2">
+                        <Label>Причина запроса верификации</Label>
+                        <Textarea placeholder="Опишите, почему ваш аккаунт должен быть верифицирован..." />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Документы (необязательно)</Label>
+                        <Button variant="outline" className="w-full">
+                          <Icon name="Upload" size={16} className="mr-2" />
+                          Загрузить документы
+                        </Button>
+                      </div>
+                      <Button 
+                        className="w-full social-gradient text-white"
+                        onClick={() => {
+                          setAdminMessage('Заявка на верификацию отправлена!');
+                          setTimeout(() => setAdminMessage(''), 3000);
+                        }}
+                      >
+                        Отправить заявку
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
               <p className="text-slate-600 mb-4">Добро пожаловать в SocialNet!</p>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
@@ -262,7 +665,7 @@ const Index = () => {
                   <div className="text-sm text-slate-600">Друзей</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-green-600">48</div>
+                  <div className="text-2xl font-bold text-green-600">{postsState.filter(p => p.author === userName).length}</div>
                   <div className="text-sm text-slate-600">Постов</div>
                 </div>
                 <div>
@@ -599,7 +1002,10 @@ const Index = () => {
                   {menuItems.map((item) => (
                     <button
                       key={item.id}
-                      onClick={() => setSelectedSection(item.id)}
+                      onClick={() => {
+                        setSelectedSection(item.id);
+                        if (item.id === 'admin') setAdminSection('dashboard');
+                      }}
                       className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-all hover:bg-slate-100 ${
                         selectedSection === item.id ? 'bg-gradient-to-r from-red-100 to-blue-100 text-blue-600' : 'text-slate-700'
                       } ${item.id === 'admin' ? 'border border-red-200' : ''}`}
