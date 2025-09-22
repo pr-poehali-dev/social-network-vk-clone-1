@@ -5,11 +5,17 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import Icon from '@/components/ui/icon';
 
 const Index = () => {
   const [selectedSection, setSelectedSection] = useState('feed');
   const [newPostText, setNewPostText] = useState('');
+  const [commentTexts, setCommentTexts] = useState<{[key: number]: string}>({});
+  const [showComments, setShowComments] = useState<{[key: number]: boolean}>({});
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const initialPosts = [
     {
@@ -22,7 +28,11 @@ const Index = () => {
       likes: 42,
       comments: 8,
       shares: 3,
-      isLiked: false
+      isLiked: false,
+      commentsList: [
+        { id: 1, author: 'Мария Иванова', text: 'Очень красиво! 😍', time: '1 час назад', avatar: '/img/24c84469-a371-42dd-98a2-9a3aaaafd967.jpg' },
+        { id: 2, author: 'Дмитрий Смирнов', text: 'Где это снимали?', time: '30 мин назад', avatar: '/img/b744abf9-6cbf-4760-8752-af94bcfd7930.jpg' }
+      ]
     },
     {
       id: 2,
@@ -33,7 +43,11 @@ const Index = () => {
       likes: 28,
       comments: 12,
       shares: 5,
-      isLiked: true
+      isLiked: true,
+      commentsList: [
+        { id: 1, author: 'Алексей Петров', text: 'Молодец! Продолжай в том же духе!', time: '2 часа назад', avatar: '/img/b744abf9-6cbf-4760-8752-af94bcfd7930.jpg' },
+        { id: 2, author: 'Анна Козлова', text: 'Какой язык изучаешь?', time: '1 час назад', avatar: '/img/24c84469-a371-42dd-98a2-9a3aaaafd967.jpg' }
+      ]
     }
   ];
 
@@ -55,6 +69,7 @@ const Index = () => {
     { id: 'groups', icon: 'Users2', label: 'Группы', count: null },
     { id: 'photos', icon: 'Camera', label: 'Фото', count: null },
     { id: 'music', icon: 'Music', label: 'Музыка', count: null },
+    { id: 'admin', icon: 'Shield', label: 'Админ', count: null },
     { id: 'settings', icon: 'Settings', label: 'Настройки', count: null },
   ];
 
@@ -94,15 +109,134 @@ const Index = () => {
         likes: 0,
         comments: 0,
         shares: 0,
-        isLiked: false
+        isLiked: false,
+        commentsList: []
       };
       setPostsState(prevPosts => [newPost, ...prevPosts]);
       setNewPostText('');
     }
   }, [newPostText]);
 
+  const handleAddComment = useCallback((postId: number) => {
+    const commentText = commentTexts[postId];
+    if (commentText?.trim()) {
+      const newComment = {
+        id: Date.now(),
+        author: 'Вы',
+        text: commentText,
+        time: 'только что',
+        avatar: '/img/24c84469-a371-42dd-98a2-9a3aaaafd967.jpg'
+      };
+      
+      setPostsState(prevPosts => 
+        prevPosts.map(post => 
+          post.id === postId 
+            ? { 
+                ...post, 
+                comments: post.comments + 1,
+                commentsList: [...(post.commentsList || []), newComment]
+              }
+            : post
+        )
+      );
+      
+      setCommentTexts(prev => ({ ...prev, [postId]: '' }));
+    }
+  }, [commentTexts]);
+
+  const toggleComments = useCallback((postId: number) => {
+    setShowComments(prev => ({ ...prev, [postId]: !prev[postId] }));
+  }, []);
+
+  const handleDeletePost = useCallback((postId: number) => {
+    if (isAdmin) {
+      setPostsState(prevPosts => prevPosts.filter(post => post.id !== postId));
+    }
+  }, [isAdmin]);
+
   const renderSectionContent = () => {
     switch (selectedSection) {
+      case 'admin':
+        return (
+          <Card className="bg-white/70 backdrop-blur-sm border-slate-200">
+            <CardHeader>
+              <div className="flex items-center space-x-2">
+                <Icon name="Shield" className="text-red-500" size={24} />
+                <h2 className="text-xl font-semibold">Админ панель</h2>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="admin-mode"
+                  checked={isAdmin}
+                  onCheckedChange={setIsAdmin}
+                />
+                <Label htmlFor="admin-mode">Включить режим администратора</Label>
+              </div>
+              
+              <Separator />
+              
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Статистика платформы</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-blue-50 p-4 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-blue-600">1,247</div>
+                    <div className="text-sm text-slate-600">Пользователей</div>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-green-600">3,891</div>
+                    <div className="text-sm text-slate-600">Постов</div>
+                  </div>
+                  <div className="bg-purple-50 p-4 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-purple-600">12,456</div>
+                    <div className="text-sm text-slate-600">Лайков</div>
+                  </div>
+                  <div className="bg-orange-50 p-4 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-orange-600">789</div>
+                    <div className="text-sm text-slate-600">Сообщений</div>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Управление контентом</h3>
+                <div className="space-y-2">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Icon name="Users" className="mr-2" size={16} />
+                    Управление пользователями
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Icon name="FileText" className="mr-2" size={16} />
+                    Модерация постов
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Icon name="AlertTriangle" className="mr-2" size={16} />
+                    Жалобы и нарушения
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Icon name="BarChart" className="mr-2" size={16} />
+                    Аналитика и отчеты
+                  </Button>
+                </div>
+              </div>
+
+              {isAdmin && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-2 text-red-700">
+                    <Icon name="AlertTriangle" size={16} />
+                    <span className="font-medium">Режим администратора активен</span>
+                  </div>
+                  <p className="text-sm text-red-600 mt-1">
+                    У вас есть расширенные права для управления платформой
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
       case 'profile':
         return (
           <Card className="bg-white/70 backdrop-blur-sm border-slate-200">
@@ -111,7 +245,16 @@ const Index = () => {
                 <AvatarImage src="/img/24c84469-a371-42dd-98a2-9a3aaaafd967.jpg" />
                 <AvatarFallback>Я</AvatarFallback>
               </Avatar>
-              <h2 className="text-xl font-semibold mb-2">Ваш профиль</h2>
+              <div className="flex items-center justify-center space-x-2 mb-2">
+                <h2 className="text-xl font-semibold">Ваш профиль</h2>
+                <div className="flex items-center justify-center w-6 h-6 bg-blue-500 rounded-full">
+                  <Icon name="Check" size={16} className="text-white" />
+                </div>
+              </div>
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700 mb-4">
+                <Icon name="ShieldCheck" size={12} className="mr-1" />
+                Верифицированный аккаунт
+              </Badge>
               <p className="text-slate-600 mb-4">Добро пожаловать в SocialNet!</p>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
@@ -228,12 +371,12 @@ const Index = () => {
                     <AvatarFallback>Я</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <Input 
+                    <Textarea 
                       placeholder="Что у вас нового?" 
                       value={newPostText}
                       onChange={(e) => setNewPostText(e.target.value)}
-                      className="bg-slate-100/50 border-slate-200 focus:bg-white transition-colors"
-                      onKeyPress={(e) => e.key === 'Enter' && handleCreatePost()}
+                      className="bg-slate-100/50 border-slate-200 focus:bg-white transition-colors resize-none"
+                      rows={3}
                     />
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex space-x-4">
@@ -276,9 +419,21 @@ const Index = () => {
                           <p className="text-sm text-slate-500">{post.time}</p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="sm">
-                        <Icon name="MoreHorizontal" size={20} />
-                      </Button>
+                      <div className="flex items-center space-x-2">
+                        {isAdmin && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDeletePost(post.id)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Icon name="Trash2" size={16} />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm">
+                          <Icon name="MoreHorizontal" size={20} />
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Post Content */}
@@ -309,7 +464,12 @@ const Index = () => {
                           <Icon name="Heart" size={18} fill={post.isLiked ? "currentColor" : "none"} />
                           <span>{post.likes}</span>
                         </Button>
-                        <Button variant="ghost" size="sm" className="flex items-center space-x-2 text-slate-600 hover:text-blue-500">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => toggleComments(post.id)}
+                          className="flex items-center space-x-2 text-slate-600 hover:text-blue-500"
+                        >
                           <Icon name="MessageCircle" size={18} />
                           <span>{post.comments}</span>
                         </Button>
@@ -327,6 +487,57 @@ const Index = () => {
                         <Icon name="Bookmark" size={18} />
                       </Button>
                     </div>
+
+                    {/* Comments Section */}
+                    {showComments[post.id] && (
+                      <div className="mt-4 space-y-4">
+                        <Separator />
+                        
+                        {/* Existing Comments */}
+                        <div className="space-y-3">
+                          {(post.commentsList || []).map((comment) => (
+                            <div key={comment.id} className="flex space-x-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={comment.avatar} />
+                                <AvatarFallback>{comment.author[0]}</AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 bg-slate-50 rounded-lg p-3">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-sm font-medium">{comment.author}</span>
+                                  <span className="text-xs text-slate-500">{comment.time}</span>
+                                </div>
+                                <p className="text-sm text-slate-700">{comment.text}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Add Comment */}
+                        <div className="flex space-x-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src="/img/24c84469-a371-42dd-98a2-9a3aaaafd967.jpg" />
+                            <AvatarFallback>Я</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <Input
+                              placeholder="Написать комментарий..."
+                              value={commentTexts[post.id] || ''}
+                              onChange={(e) => setCommentTexts(prev => ({ ...prev, [post.id]: e.target.value }))}
+                              onKeyPress={(e) => e.key === 'Enter' && handleAddComment(post.id)}
+                              className="bg-slate-100 border-slate-200"
+                            />
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAddComment(post.id)}
+                            disabled={!commentTexts[post.id]?.trim()}
+                            className="social-gradient text-white"
+                          >
+                            <Icon name="Send" size={16} />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -346,6 +557,12 @@ const Index = () => {
               <h1 className="text-2xl font-bold bg-gradient-to-r from-red-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
                 SocialNet
               </h1>
+              {isAdmin && (
+                <Badge variant="destructive" className="bg-red-500">
+                  <Icon name="Shield" size={12} className="mr-1" />
+                  ADMIN
+                </Badge>
+              )}
             </div>
 
             <div className="flex-1 max-w-lg mx-8">
@@ -385,10 +602,10 @@ const Index = () => {
                       onClick={() => setSelectedSection(item.id)}
                       className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-all hover:bg-slate-100 ${
                         selectedSection === item.id ? 'bg-gradient-to-r from-red-100 to-blue-100 text-blue-600' : 'text-slate-700'
-                      }`}
+                      } ${item.id === 'admin' ? 'border border-red-200' : ''}`}
                     >
                       <div className="flex items-center space-x-3">
-                        <Icon name={item.icon} size={20} />
+                        <Icon name={item.icon} size={20} className={item.id === 'admin' ? 'text-red-500' : ''} />
                         <span className="font-medium">{item.label}</span>
                       </div>
                       {item.count && (
